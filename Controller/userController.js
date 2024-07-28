@@ -75,14 +75,25 @@ message:"player is not found"
     })
 }
 //redirecting a user to a login page after verification
-setTimeout(() => {
-    res.send("verification successful");
-    
-}, 5000);
-res.redirect("http://localhost:2121/api/v1/loginPlayer");
-    return;
- 
 
+
+setTimeout(() => {
+    res.send(`
+      <html>
+        <body>
+          <h1>User successfully verified!</h1>
+          <script>
+            setTimeout(() => {
+              window.location.href = 'http://localhost:2121';
+            }, 5000);
+          </script>
+        </body>
+      </html>
+    `);
+    return;
+  }, 5000);
+  
+  
 } catch (error) {
     res.status(500).json({
         message: "internal server error" + error.message
