@@ -3,6 +3,7 @@ const bcrypt=require("bcryptjs")
 const jwt = require("jsonwebtoken")
 const sendMail = require("../helper/email")
 const emailTemplate = require("../helper/html")
+const forgot = require("../helper/forgetPassword")
 
 exports.createdPlayer = async(req,res)=>{
     try {
@@ -73,8 +74,15 @@ message:"player is not found"
         message:"update not successfully"
     })
 }
+//redirecting a user to a login page after verification
+setTimeout(() => {
+    res.send("verification successful");
+    
+}, 5000);
+res.redirect("http://localhost:2121/api/v1/loginPlayer");
+    return;
+ 
 
-return res.send("verification successful")
 } catch (error) {
     res.status(500).json({
         message: "internal server error" + error.message
@@ -149,12 +157,67 @@ exports.forgetPassword = async(req, res)=>{
         })
       }
 
-      res.status()
+      const newToken = jwt.sign({
+        playerId:checkEmail._id}, process.env.secret_key,{expires:"900s"})
+     const link = `${req.protocol}://${req.get("host")}/api/v1/reset/${checkEmail._id}/${newToken}`
+      const subject = "RESET PASSWORD"
+      const html = forgot(link,playerName)
+      sendMail({
+          email:playerEmail,
+          subject,
+          html
+      })
+      return res.status(200).json({
+        message:"link to reset password sent successfully"
+      })
 
 
     } catch (error) {
       return  res.status(500).json({
          message:"internal server error" + error.message
+        })
+    }
+}
+
+
+//reset user password
+
+exports.resetPassword = async(req, res)=>{
+    try {
+      const {password,confirmPassword} = req.body  
+      if(!password || !confirmPassword) {
+        return res.status(400).json({
+            message:"please input your new password "
+        })
+      }
+      if (password !== confirmPassword) {
+        return res.status(400).json({
+            message:"password do not match"
+        })
+      }
+     const  token = req.params.token 
+      const playerId = req.params.playerId
+      const player = await playersModel.findById(playerId)
+      if(!player) {
+return res.status(404).json({
+    message : "player not found"
+})
+      }
+
+const  Salt = await bcrypt.genSalt(12)
+const hash = await bcrypt.hashSync(password,Salt)
+player.playerPassword = hash
+await player.save()
+
+return res.status(200).json({
+    message:"password reset successful"
+
+})
+
+
+    } catch (error) {
+     return res.status(500).json({
+            message:"internal server error" + error.message
         })
     }
 }
