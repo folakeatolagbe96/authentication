@@ -16,7 +16,7 @@ exports.createdPlayer = async(req,res)=>{
         }
         const bcryptpassword = await bcrypt.genSaltSync(10)
         const hashedPassword = await bcrypt.hashSync(playerPassword,bcryptpassword)
-
+//trying to prepare the data to save to the database
         const data = {
             playerName,
             playerAge,
@@ -33,6 +33,11 @@ exports.createdPlayer = async(req,res)=>{
         createdPlayer.token = newToken
         await createdPlayer.save()
         //const link = "http://localhost:2121/api/v1/verify/createdPlayer._id/newToken"
+
+
+
+        //req.protocol is our http or https since we don't know where it is coming from
+        //req.get("host") is the localhost map to the port or the domain derive in which you hosted the route
         const link = `${req.protocol}://${req.get("host")}/api/v1/verify/${createdPlayer._id}/${newToken}`
         const subject = "verify email account"
         const html = emailTemplate(link,playerName)
@@ -70,7 +75,7 @@ message:"player is not found"
     jwt.verify(token,process.env.secret)
     const updatePlayer = await playersModel.findByIdAndUpdate(id,{isVerified:true},{new:true})
     if (!updatePlayer){
-        res.status(404).json({
+        res.status(400).json({
         message:"update not successfully"
     })
 }
@@ -161,7 +166,7 @@ exports.forgetPassword = async(req, res)=>{
         })
       }
 
-      const checkEmail = await playersModel .findOne({playerEmail:playerEmail})
+      const checkEmail = await playersModel.findOne({playerEmail:playerEmail})
       if(!checkEmail){
         res.status(404).json({
             message:"Email not found"
@@ -169,10 +174,10 @@ exports.forgetPassword = async(req, res)=>{
       }
 
       const newToken = jwt.sign({
-        playerId:checkEmail._id}, process.env.secret_key,{expires:"900s"})
+        playerId:checkEmail._id}, process.env.secret,{expiresIn:"900s"})
      const link = `${req.protocol}://${req.get("host")}/api/v1/reset/${checkEmail._id}/${newToken}`
       const subject = "RESET PASSWORD"
-      const html = forgot(link,playerName)
+      const html = forgot(link,checkEmail.playerName)
       sendMail({
           email:playerEmail,
           subject,
@@ -233,3 +238,27 @@ return res.status(200).json({
     }
 }
 
+//signing out a user
+
+exports.signOut = async(req,res)=>{
+    try {
+        const playerId = req.params.playerId
+        const player = await playersModel.findById(playerId)
+     if (!player){
+          return res.status(404).json({
+            message:"player not found"
+          })
+
+        }
+        player.token = null
+        await player.save()
+        res.status(200).json({
+            messasge:"user log out successfully"
+        })
+        
+    } catch (error) {
+        return res.status(500).json({
+            message:"internal server error" + error.message
+        })
+    }
+}
